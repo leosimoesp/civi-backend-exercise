@@ -43,45 +43,20 @@ func (api apiRoutes) HandleGetPointsWithinDistance() {
 
 		//validate query params
 		validateErrors := checkQueryParams(queryParams)
+		//validate type of query params
+		validateTypeErrors := validateType(queryParams)
+
 		if len(validateErrors) > 0 {
-
-			errorsAsJson, err := json.Marshal(ResponseError{Errors: validateErrors})
-
-			if err != nil {
-				log.Printf("Error when marshal validate errors %v\n", err)
-			}
-
-			w.WriteHeader(http.StatusBadRequest)
-			_, err = fmt.Fprintf(w, "%v\n", string(errorsAsJson))
-
-			if err != nil {
-				log.Printf("Error when marshal validate errors %v\n", err)
-			}
+			handleResponseErrors(w, validateErrors, http.StatusBadRequest)
+		} else if len(validateTypeErrors) > 0 {
+			handleResponseErrors(w, validateTypeErrors, http.StatusBadRequest)
 		} else {
 			w.WriteHeader(http.StatusOK)
-			distance, err := strconv.Atoi(queryParams.Get("distance"))
+			distance, _ := strconv.Atoi(queryParams.Get("distance"))
 
-			if err != nil {
-				errorsAsJson, err := json.Marshal(ResponseError{Errors: []ErrorMessage{{Message: err.Error()}}})
-				log.Printf("Error parse param %v\n", err)
-				fmt.Fprintf(w, "%v\n", string(errorsAsJson))
-			}
+			x, _ := strconv.Atoi(queryParams.Get("x"))
 
-			x, err := strconv.Atoi(queryParams.Get("x"))
-
-			if err != nil {
-				errorsAsJson, err := json.Marshal(ResponseError{Errors: []ErrorMessage{{Message: err.Error()}}})
-				log.Printf("Error parse param %v\n", err)
-				fmt.Fprintf(w, "%v\n", string(errorsAsJson))
-			}
-
-			y, err := strconv.Atoi(queryParams.Get("y"))
-
-			if err != nil {
-				errorsAsJson, err := json.Marshal(ResponseError{Errors: []ErrorMessage{{Message: err.Error()}}})
-				log.Printf("Error parse param %v\n", err)
-				fmt.Fprintf(w, "%v\n", string(errorsAsJson))
-			}
+			y, _ := strconv.Atoi(queryParams.Get("y"))
 
 			filteredPoints, err := api.service.GetPointsWithinDistance(datatype.Point{X: x, Y: y}, distance)
 
@@ -119,5 +94,49 @@ func checkQueryParams(params url.Values) []ErrorMessage {
 			Message: fmt.Sprintf("distance %s", ErrMandatoryMessage),
 		})
 	}
+
 	return hasErrors
+}
+
+func validateType(params url.Values) []ErrorMessage {
+	hasErrors := []ErrorMessage{}
+
+	_, err := strconv.Atoi(params.Get("distance"))
+
+	if err != nil {
+		hasErrors = append(hasErrors, ErrorMessage{
+			Message: fmt.Sprintf("distance %s", err.Error()),
+		})
+	}
+
+	_, err = strconv.Atoi(params.Get("x"))
+	if err != nil {
+		hasErrors = append(hasErrors, ErrorMessage{
+			Message: fmt.Sprintf("x %s", err.Error()),
+		})
+	}
+
+	_, err = strconv.Atoi(params.Get("y"))
+	if err != nil {
+		hasErrors = append(hasErrors, ErrorMessage{
+			Message: fmt.Sprintf("y %s", err.Error()),
+		})
+	}
+
+	return hasErrors
+}
+
+func handleResponseErrors(w http.ResponseWriter, errors []ErrorMessage, statusCode int) {
+	errorsAsJson, err := json.Marshal(ResponseError{Errors: errors})
+
+	if err != nil {
+		log.Printf("handleResponseErrors error when marshal errors %v\n", err)
+	}
+
+	w.WriteHeader(statusCode)
+	_, err = fmt.Fprintf(w, "%v\n", string(errorsAsJson))
+
+	if err != nil {
+		log.Printf("handleResponseErrors error when send error response %v\n", err)
+	}
 }
