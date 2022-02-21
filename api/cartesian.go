@@ -61,6 +61,7 @@ func (api apiRoutes) HandleGetPointsWithinDistance() {
 			filteredPoints, err := api.service.GetPointsWithinDistance(datatype.Point{X: x, Y: y}, distance)
 
 			if err != nil {
+				//Generic error
 				w.WriteHeader(http.StatusInternalServerError)
 				errorsAsJson, err := json.Marshal(ResponseError{Errors: []ErrorMessage{{Message: err.Error()}}})
 				log.Printf("Error when call service GetPointsWithinDistance %v\n", err)
